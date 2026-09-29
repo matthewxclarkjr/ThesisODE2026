@@ -14,6 +14,7 @@ This repository contains computational examples that accompany the numerical por
 ## Files
 
 ### `lotka_volterra_lab.py`
+
 Numerical laboratory for the Lotka–Volterra predator-prey system.
 
 The program is used to study numerical solution behavior and the Hamiltonian
@@ -25,14 +26,18 @@ H(x,y) = -\delta \ln(x) + \gamma x - \alpha \ln(y) + \beta y.
 The code supports numerical experimentation and visualization associated with the thesis discussion of operator splitting and numerical methods.
 
 ### `riccati_stopping_time.py`
+
 Numerical investigation of finite-time blow-up using a Riccati-type differential equation.
 
 The program approximates stopping times by tracking when the numerical solution reaches a prescribed threshold.
 
-### `stop-time-stream-plots.py`
+### `stop_time_stream_plots.py`
+
 Produces stream plots and related visualizations for the stopping-time and blow-up analysis.
 
-> Note: This file may later be renamed `stop_time_stream_plots.py` to follow standard Python filename conventions.
+### `requirements.txt`
+
+Lists the Python packages required to run the programs in this repository.
 
 ## Thesis Context
 
@@ -46,26 +51,37 @@ These Python programs provide computational support for the examples and numeric
 
 ## Requirements
 
-The programs use Python 3 and may require common scientific-computing packages such as:
+The programs use Python 3.
+
+To install the required Python packages, open a terminal in the repository folder and run:
 
 ```bash
-pip install numpy scipy matplotlib sympy
+pip install -r requirements.txt
 ```
 
-Exact dependencies may vary by script.
+The current requirements file includes:
+
+- NumPy
+- SciPy
+- Matplotlib
+- SymPy
 
 ## Running the Programs
 
-From a terminal, navigate to the repository folder and run a script with Python:
+After installing the required packages, run a script from the repository folder with Python.
+
+For example:
 
 ```bash
 python lotka_volterra_lab.py
 ```
 
-or
-
 ```bash
 python riccati_stopping_time.py
+```
+
+```bash
+python stop_time_stream_plots.py
 ```
 
 ## Purpose
