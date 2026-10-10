@@ -1,0 +1,10 @@
+2
+x 10
+y 5
+alpha 1.5
+beta 1.0
+delta 1.0
+tau 3.0
+alpha*x - beta*x*y
+delta*x*y - tau*y
+30 3000

@@ -1,147 +1,182 @@
+import numpy as np
 import matplotlib.pyplot as plt
+from scipy.integrate import solve_ivp
 
 
-def riccati_stopping_time(s, y0, h=1e-3, M=100, max_steps=1_000_000):
+def linearized_riccati_system(x, V):
     """
-    Approximate the maximal forward lifetime for
+    First-order system equivalent to
 
-        y'(t) = t^2 + y(t)^2,   y(s) = y0
+        v''(x) + x^2 v(x) = 0.
 
-    by applying explicit Euler to the lifted autonomous system
+    With p = v', we have
 
-        x' = 1,
-        w' = x^2 + w^2,
-        x(0) = s,
-        w(0) = y0.
-
-    The computation stops when |w_n| >= M.
-
-    Returns the elapsed forward lifetime n*h, rather than the
-    physical threshold-crossing time s + n*h.
+        v' = p,
+        p' = -x^2 v.
     """
-
-    x = float(s)
-    w = float(y0)
-
-    for n in range(max_steps + 1):
-        if abs(w) >= M:
-            stopping_lifetime = n * h
-            return stopping_lifetime, n, x, w
-
-        x_new = x + h
-        w_new = w + h * (x**2 + w**2)
-
-        x = x_new
-        w = w_new
-
-    return None, max_steps, x, w
+    v, p = V
+    return [p, -(x**2) * v]
 
 
-def riccati_trajectory(s, y0, h=1e-3, M=100, max_steps=1_000_000):
+def first_zero_event(x, V):
     """
-    Compute the Euler trajectory for the lifted Riccati system until the
-    threshold |w_n| >= M is reached or max_steps is exceeded.
-
-    The returned stopping_lifetime is the elapsed forward time n*h.
-    The returned physical_stopping_time is s + n*h.
+    Event function for detecting a zero of v.
     """
-
-    x = float(s)
-    w = float(y0)
-
-    # These times are physical times t = s + tau.
-    times = [s]
-    x_vals = [x]
-    w_vals = [w]
-
-    for n in range(max_steps):
-        if abs(w) >= M:
-            stopping_lifetime = n * h
-            physical_stopping_time = s + stopping_lifetime
-
-            return (
-                times,
-                x_vals,
-                w_vals,
-                stopping_lifetime,
-                physical_stopping_time,
-                n,
-            )
-
-        x_new = x + h
-        w_new = w + h * (x**2 + w**2)
-
-        x = x_new
-        w = w_new
-
-        times.append(s + (n + 1) * h)
-        x_vals.append(x)
-        w_vals.append(w)
-
-    return (
-        times,
-        x_vals,
-        w_vals,
-        None,
-        None,
-        max_steps,
-    )
+    return V[0]
 
 
-def plot_riccati_trajectory(
-    s=0.0,
-    y0=1.0,
-    h=1e-3,
-    M=100,
-    max_steps=1_000_000,
-    save_path="riccati_blowup_plot.png",
+# Stop at the first detected zero of v.
+first_zero_event.terminal = True
+first_zero_event.direction = 0
+
+
+def riccati_blowup_time(
+    s,
+    y0,
+    xmax_offset=20.0,
+    rtol=1e-9,
+    atol=1e-11,
+    max_step=0.05,
 ):
     """
-    Plot w_n versus physical time for one threshold M and mark the
-    approximate threshold-crossing time.
-    """
+    Compute the maximal forward lifetime m(s,y0) for
 
-    (
-        times,
-        x_vals,
-        w_vals,
-        stopping_lifetime,
-        physical_stopping_time,
-        stop_index,
-    ) = riccati_trajectory(
+        u'(t) = t^2 + u(t)^2,   u(s) = y0,
+
+    by solving the linearized equation
+
+        v''(x) + x^2 v(x) = 0,
+        v(s) = 1,
+        v'(s) = -y0,
+
+    and detecting the first zero xi_star of v to the right of s.
+
+    Since
+
+        u(x) = -v'(x) / v(x),
+
+    the Riccati solution blows up when v first reaches zero. Therefore
+
+        m(s,y0) = xi_star - s.
+
+    Returns
+    -------
+    m : float
+        Maximal forward lifetime.
+    xi_star : float
+        Physical blow-up location.
+    sol : scipy.integrate.OdeResult
+        Numerical solution object returned by solve_ivp.
+    """
+    s = float(s)
+    y0 = float(y0)
+
+    sol = solve_ivp(
+        linearized_riccati_system,
+        (s, s + xmax_offset),
+        [1.0, -y0],
+        events=first_zero_event,
+        rtol=rtol,
+        atol=atol,
+        max_step=max_step,
+        dense_output=True,
+    )
+
+    if len(sol.t_events[0]) == 0:
+        raise RuntimeError(
+            "No zero of v was detected. Increase xmax_offset."
+        )
+
+    xi_star = float(sol.t_events[0][0])
+    m = xi_star - s
+
+    return m, xi_star, sol
+
+
+def sample_linear_solution(sol, s, xi_star, num_points=1200):
+    """
+    Sample v and p=v' on [s, xi_star].
+    """
+    xs = np.linspace(float(s), float(xi_star), int(num_points))
+    vals = sol.sol(xs)
+    v_vals = vals[0]
+    p_vals = vals[1]
+    return xs, v_vals, p_vals
+
+
+def sample_reconstructed_riccati(
+    sol,
+    s,
+    xi_star,
+    num_points=1200,
+    endpoint_fraction=0.999,
+):
+    """
+    Reconstruct
+
+        u(x) = -v'(x)/v(x)
+
+    on an interval ending just before xi_star.
+
+    The endpoint is kept slightly to the left of xi_star so that division
+    by v(x) remains finite in the numerical plot.
+    """
+    if not (0.0 < endpoint_fraction < 1.0):
+        raise ValueError("endpoint_fraction must lie strictly between 0 and 1.")
+
+    s = float(s)
+    xi_star = float(xi_star)
+    x_end = s + endpoint_fraction * (xi_star - s)
+
+    xs = np.linspace(s, x_end, int(num_points))
+    vals = sol.sol(xs)
+    v_vals = vals[0]
+    p_vals = vals[1]
+
+    u_vals = -p_vals / v_vals
+    return xs, u_vals
+
+
+def plot_linear_zero(
+    s=0.0,
+    y0=1.0,
+    xmax_offset=20.0,
+    save_path="riccati_linear_zero.png",
+):
+    """
+    Plot the linearized solution v(x) and mark its first zero xi_star.
+    """
+    m, xi_star, sol = riccati_blowup_time(
         s=s,
         y0=y0,
-        h=h,
-        M=M,
-        max_steps=max_steps,
+        xmax_offset=xmax_offset,
+    )
+
+    xs, v_vals, _ = sample_linear_solution(
+        sol,
+        s=s,
+        xi_star=xi_star,
     )
 
     plt.figure(figsize=(10, 6))
-    plt.plot(times, w_vals, label="Euler approximation of $w_n$")
-    plt.axhline(M, linestyle="--", label=f"Threshold $M={M}$")
-
-    if physical_stopping_time is not None:
-        plt.axvline(
-            physical_stopping_time,
-            linestyle=":",
-            label=(
-                f"Approx. stopping lifetime = "
-                f"{stopping_lifetime:.3f}"
-            ),
-        )
-
-        plt.plot(
-            times[-1],
-            w_vals[-1],
-            marker="o",
-            linestyle="None",
-            label="Stopping point",
-        )
-
-    plt.xlabel("Physical time $t$")
-    plt.ylabel("$w_n$")
+    plt.plot(xs, v_vals, label=r"$v(x)$")
+    plt.axhline(0.0, linestyle="--", label=r"$v=0$")
+    plt.axvline(
+        xi_star,
+        linestyle=":",
+        label=rf"$\xi_* \approx {xi_star:.10f}$",
+    )
+    plt.plot(
+        [xi_star],
+        [0.0],
+        marker="o",
+        linestyle="None",
+        label="First zero",
+    )
+    plt.xlabel(r"$x$")
+    plt.ylabel(r"$v(x)$")
     plt.title(
-        "Explicit Euler Approximation for the Lifted Riccati System"
+        "Linearized Riccati Equation: First Zero of $v$"
     )
     plt.legend()
     plt.grid(True)
@@ -149,72 +184,47 @@ def plot_riccati_trajectory(
     plt.savefig(save_path, dpi=300)
     plt.close()
 
-    print(f"Saved single-threshold plot as: {save_path}")
-
-    return (
-        stopping_lifetime,
-        physical_stopping_time,
-        stop_index,
-        times[-1],
-        w_vals[-1],
-    )
+    return m, xi_star
 
 
-def plot_riccati_thresholds(
+def plot_reconstructed_riccati(
     s=0.0,
     y0=1.0,
-    h=1e-3,
-    thresholds=None,
-    max_steps=1_000_000,
-    save_path="riccati_threshold_comparison.png",
+    xmax_offset=20.0,
+    endpoint_fraction=0.999,
+    save_path="riccati_reconstructed_blowup.png",
 ):
     """
-    Plot w_n versus physical time for several threshold values M.
+    Plot the reconstructed Riccati solution
 
-    Each trajectory is stopped when |w_n| first exceeds its threshold.
+        u(x) = -v'(x)/v(x)
+
+    up to a point just before the first zero of v.
     """
+    m, xi_star, sol = riccati_blowup_time(
+        s=s,
+        y0=y0,
+        xmax_offset=xmax_offset,
+    )
 
-    if thresholds is None:
-        thresholds = [50, 100, 500]
+    xs, u_vals = sample_reconstructed_riccati(
+        sol,
+        s=s,
+        xi_star=xi_star,
+        endpoint_fraction=endpoint_fraction,
+    )
 
     plt.figure(figsize=(10, 6))
-
-    for M in thresholds:
-        (
-            times,
-            x_vals,
-            w_vals,
-            stopping_lifetime,
-            physical_stopping_time,
-            stop_index,
-        ) = riccati_trajectory(
-            s=s,
-            y0=y0,
-            h=h,
-            M=M,
-            max_steps=max_steps,
-        )
-
-        plt.plot(times, w_vals, label=f"$M={M}$")
-        plt.axhline(M, linestyle="--")
-
-        if physical_stopping_time is not None:
-            plt.axvline(
-                physical_stopping_time,
-                linestyle=":",
-            )
-
-            plt.plot(
-                times[-1],
-                w_vals[-1],
-                marker="o",
-                linestyle="None",
-            )
-
-    plt.xlabel("Physical time $t$")
-    plt.ylabel("$w_n$")
+    plt.plot(xs, u_vals, label=r"$u(x)=-v'(x)/v(x)$")
+    plt.axvline(
+        xi_star,
+        linestyle=":",
+        label=rf"$\xi_* \approx {xi_star:.10f}$",
+    )
+    plt.xlabel(r"$x$")
+    plt.ylabel(r"$u(x)$")
     plt.title(
-        "Explicit Euler Approximation for the Lifted Riccati System"
+        "Reconstructed Riccati Solution Approaching Blow-up"
     )
     plt.legend()
     plt.grid(True)
@@ -222,78 +232,55 @@ def plot_riccati_thresholds(
     plt.savefig(save_path, dpi=300)
     plt.close()
 
-    print(f"Saved multi-threshold plot as: {save_path}")
+    return m, xi_star
 
 
-def run_threshold_experiment():
+def run_example():
     """
-    Run the Riccati stopping-time approximation for several thresholds
-    and print the resulting forward-lifetime estimates.
-    """
+    Run the thesis example
 
+        u'(t) = t^2 + u(t)^2,
+        u(0) = 1.
+
+    For s=0, the physical blow-up location xi_star and the maximal
+    forward lifetime m(0,1) are numerically equal.
+    """
     s = 0.0
     y0 = 1.0
-    h = 1e-3
-    thresholds = [50, 100, 500]
 
-    print("Riccati Stopping-Time Approximation")
-    print("-----------------------------------")
-    print("Equation: y'(t) = t^2 + y(t)^2")
-    print(f"Initial condition: y({s}) = {y0}")
-    print(f"Step size: h = {h}")
+    m, xi_star, _ = riccati_blowup_time(s=s, y0=y0)
+
+    print("Riccati Blow-up Time via Linearization")
+    print("--------------------------------------")
+    print("Equation: u'(t) = t^2 + u(t)^2")
+    print(f"Initial condition: u({s}) = {y0}")
     print()
-    print("Comparison estimate: m(0,1) <= 1")
+    print("Linearized problem:")
+    print("  v''(x) + x^2 v(x) = 0")
+    print(f"  v({s}) = 1")
+    print(f"  v'({s}) = {-y0}")
     print()
+    print(f"First zero xi_*:             {xi_star:.12f}")
+    print(f"Maximal lifetime m(0,1):    {m:.12f}")
+    print(f"Comparison estimate m<=1:   {m <= 1.0}")
 
-    for M in thresholds:
-        stopping_lifetime, n, x_final, w_final = (
-            riccati_stopping_time(
-                s=s,
-                y0=y0,
-                h=h,
-                M=M,
-            )
-        )
+    plot_linear_zero(
+        s=s,
+        y0=y0,
+        save_path="riccati_linear_zero.png",
+    )
 
-        if stopping_lifetime is not None:
-            physical_stopping_time = s + stopping_lifetime
-        else:
-            physical_stopping_time = None
+    plot_reconstructed_riccati(
+        s=s,
+        y0=y0,
+        save_path="riccati_reconstructed_blowup.png",
+    )
 
-        print(f"Threshold M = {M}")
-        print(
-            f"  Approximate stopping lifetime: "
-            f"{stopping_lifetime}"
-        )
-        print(
-            f"  Physical threshold-crossing time: "
-            f"{physical_stopping_time}"
-        )
-        print(f"  Steps taken: {n}")
-        print(f"  Final x value: {x_final}")
-        print(f"  Final w value: {w_final}")
-        print()
+    print()
+    print("Saved plots:")
+    print("  riccati_linear_zero.png")
+    print("  riccati_reconstructed_blowup.png")
 
 
 if __name__ == "__main__":
-    # Print stopping-time approximations for the thresholds used
-    # in the thesis.
-    run_threshold_experiment()
-
-    # Generate a single-threshold representative plot.
-    plot_riccati_trajectory(
-        s=0.0,
-        y0=1.0,
-        h=1e-3,
-        M=100,
-        save_path="riccati_blowup_plot.png",
-    )
-
-    # Generate a multi-threshold comparison plot.
-    plot_riccati_thresholds(
-        s=0.0,
-        y0=1.0,
-        h=1e-3,
-        thresholds=[50, 100, 500],
-        save_path="riccati_threshold_comparison.png",
-    )
+    run_example()
