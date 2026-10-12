@@ -130,7 +130,7 @@ x' = y - x^2
 y' = x - y
 ```
 
-and highlights the negatively invariant region used in the finite-time blow-up estimate. The visualization supports the discussion of how the maximal existence-time function can be encoded through the positive Koopman observable
+and highlights the positively invariant negative quadrant used in the finite-time blow-up estimate. The visualization supports the discussion of how the maximal existence-time function can be encoded through the positive Koopman observable
 
 ```text
 phi = exp(-m).
