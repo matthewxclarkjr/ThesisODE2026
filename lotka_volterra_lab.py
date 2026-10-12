@@ -367,7 +367,7 @@ def make_plots(
         f"H(x0,y0) = {H0:.10f}\n\n"
         "Final Relative Error in H:\n"
         f"  Forward Euler: {relative_error_euler[-1]:.10f}%\n"
-        f"  Lie Splitting:  {relative_error_lie[-1]:.10f}%\n"
+        f"  Lie–Trotter Splitting:  {relative_error_lie[-1]:.10f}%\n"
         f"  Strang Splitting: {relative_error_strang[-1]:.10f}%\n"
         f"  ODE Solver:     {relative_error_ode[-1]:.10f}%"
     )
@@ -388,7 +388,7 @@ def make_plots(
     # Second visualization: relative error comparison.
     fig2 = plt.figure(figsize=(11, 7))
     plt.plot(t_eval, relative_error_euler, label="Forward Euler")
-    plt.plot(t_eval, relative_error_lie, label="Lie Splitting")
+    plt.plot(t_eval, relative_error_lie, label="Lie–Trotter Splitting")
     plt.plot(t_eval, relative_error_strang, label="Strang Splitting")
     plt.plot(t_eval, relative_error_ode, label="solve_ivp Reference")
     plt.xlabel("Time t")
@@ -404,12 +404,12 @@ def make_plots(
     fig3 = plt.figure(figsize=(11, 7))
     for var in var_names:
         plt.plot(t_eval, euler_results[var], "--", label=f"{var}(t), Forward Euler")
-        plt.plot(t_eval, lie_results[var], "-.", label=f"{var}(t), Lie Splitting")
+        plt.plot(t_eval, lie_results[var], "-.", label=f"{var}(t), Lie–Trotter Splitting")
         plt.plot(t_eval, strang_results[var], ":", label=f"{var}(t), Strang Splitting")
         plt.plot(t_eval, ode_results[var], "-", label=f"{var}(t), solve_ivp Reference")
     plt.xlabel("Time t")
     plt.ylabel("Population values")
-    plt.title("Population Variables for Forward Euler, Lie, Strang, and solve_ivp")
+    plt.title("Population Variables for Forward Euler, Lie–Trotter, Strang, and solve_ivp")
     plt.legend(fontsize=8)
     plt.grid(True)
     plt.tight_layout()
@@ -421,12 +421,12 @@ def make_plots(
     y_name = var_names[1]
     fig4 = plt.figure(figsize=(11, 7))
     plt.plot(euler_results[x_name], euler_results[y_name], "--", label="Forward Euler")
-    plt.plot(lie_results[x_name], lie_results[y_name], "-.", label="Lie Splitting")
+    plt.plot(lie_results[x_name], lie_results[y_name], "-.", label="Lie–Trotter Splitting")
     plt.plot(strang_results[x_name], strang_results[y_name], ":", label="Strang Splitting")
     plt.plot(ode_results[x_name], ode_results[y_name], "-", label="solve_ivp Reference")
     plt.xlabel("x")
     plt.ylabel("y")
-    plt.title("Phase Plot: Forward Euler, Lie, Strang, and solve_ivp")
+    plt.title("Phase Plot: Forward Euler, Lie–Trotter, Strang, and solve_ivp")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
@@ -571,7 +571,7 @@ def run_lotka_volterra_lab(filename="LVinput.txt", make_figures=True):
     print()
     print("Final Relative Error in H:")
     print(f"  Forward Euler: {relative_error_euler[-1]:.10f}%")
-    print(f"  Lie Splitting:  {relative_error_lie[-1]:.10f}%")
+    print(f"  Lie–Trotter Splitting:  {relative_error_lie[-1]:.10f}%")
     print(f"  Strang Splitting: {relative_error_strang[-1]:.10f}%")
     print(f"  ODE Solver:     {relative_error_ode[-1]:.10f}%")
 
