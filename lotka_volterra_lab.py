@@ -130,9 +130,9 @@ def relative_error_in_H(x_vals, y_vals, H0, alpha, beta, delta, tau):
     return 100.0 * (H_vals - H0) / H0
 
 
-def explicit_euler_solve(init_vals, equation_funcs, var_names, param_values, t_eval, dt):
+def forward_euler_solve(init_vals, equation_funcs, var_names, param_values, t_eval, dt):
     """
-    Solves the system using the explicit Euler method:
+    Solves the system using the forward Euler method:
 
         z_{n+1} = z_n + dt*f(z_n).
     """
@@ -149,7 +149,7 @@ def explicit_euler_solve(init_vals, equation_funcs, var_names, param_values, t_e
     for i, var in enumerate(var_names):
         results[var][0] = init_vals[i]
 
-    # Euler integration.
+    # Forward Euler integration.
     for k in range(n_steps):
         current_vars = {
             var_names[i]: results[var_names[i]][k]
@@ -366,7 +366,7 @@ def make_plots(
         "H(x,y) = delta*x - tau*log(x) + beta*y - alpha*log(y)\n"
         f"H(x0,y0) = {H0:.10f}\n\n"
         "Final Relative Error in H:\n"
-        f"  Explicit Euler: {relative_error_euler[-1]:.10f}%\n"
+        f"  Forward Euler: {relative_error_euler[-1]:.10f}%\n"
         f"  Lie Splitting:  {relative_error_lie[-1]:.10f}%\n"
         f"  Strang Splitting: {relative_error_strang[-1]:.10f}%\n"
         f"  ODE Solver:     {relative_error_ode[-1]:.10f}%"
@@ -387,7 +387,7 @@ def make_plots(
 
     # Second visualization: relative error comparison.
     fig2 = plt.figure(figsize=(11, 7))
-    plt.plot(t_eval, relative_error_euler, label="Explicit Euler")
+    plt.plot(t_eval, relative_error_euler, label="Forward Euler")
     plt.plot(t_eval, relative_error_lie, label="Lie Splitting")
     plt.plot(t_eval, relative_error_strang, label="Strang Splitting")
     plt.plot(t_eval, relative_error_ode, label="solve_ivp Reference")
@@ -403,13 +403,13 @@ def make_plots(
     # Third visualization: variable comparison.
     fig3 = plt.figure(figsize=(11, 7))
     for var in var_names:
-        plt.plot(t_eval, euler_results[var], "--", label=f"{var}(t), Explicit Euler")
+        plt.plot(t_eval, euler_results[var], "--", label=f"{var}(t), Forward Euler")
         plt.plot(t_eval, lie_results[var], "-.", label=f"{var}(t), Lie Splitting")
         plt.plot(t_eval, strang_results[var], ":", label=f"{var}(t), Strang Splitting")
         plt.plot(t_eval, ode_results[var], "-", label=f"{var}(t), solve_ivp Reference")
     plt.xlabel("Time t")
     plt.ylabel("Population values")
-    plt.title("Population Variables for Euler, Lie, Strang, and solve_ivp")
+    plt.title("Population Variables for Forward Euler, Lie, Strang, and solve_ivp")
     plt.legend(fontsize=8)
     plt.grid(True)
     plt.tight_layout()
@@ -420,13 +420,13 @@ def make_plots(
     x_name = var_names[0]
     y_name = var_names[1]
     fig4 = plt.figure(figsize=(11, 7))
-    plt.plot(euler_results[x_name], euler_results[y_name], "--", label="Explicit Euler")
+    plt.plot(euler_results[x_name], euler_results[y_name], "--", label="Forward Euler")
     plt.plot(lie_results[x_name], lie_results[y_name], "-.", label="Lie Splitting")
     plt.plot(strang_results[x_name], strang_results[y_name], ":", label="Strang Splitting")
     plt.plot(ode_results[x_name], ode_results[y_name], "-", label="solve_ivp Reference")
     plt.xlabel("x")
     plt.ylabel("y")
-    plt.title("Phase Plot: Euler, Lie, Strang, and solve_ivp")
+    plt.title("Phase Plot: Forward Euler, Lie, Strang, and solve_ivp")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
@@ -466,7 +466,7 @@ def run_lotka_volterra_lab(filename="LVinput.txt", make_figures=True):
     equation_funcs = build_equation_functions(var_names, param_values, equations)
 
     # Run numerical methods.
-    euler_results = explicit_euler_solve(
+    euler_results = forward_euler_solve(
         init_vals,
         equation_funcs,
         var_names,
@@ -570,7 +570,7 @@ def run_lotka_volterra_lab(filename="LVinput.txt", make_figures=True):
     print(f"H(x0,y0) = {H0:.10f}")
     print()
     print("Final Relative Error in H:")
-    print(f"  Explicit Euler: {relative_error_euler[-1]:.10f}%")
+    print(f"  Forward Euler: {relative_error_euler[-1]:.10f}%")
     print(f"  Lie Splitting:  {relative_error_lie[-1]:.10f}%")
     print(f"  Strang Splitting: {relative_error_strang[-1]:.10f}%")
     print(f"  ODE Solver:     {relative_error_ode[-1]:.10f}%")
