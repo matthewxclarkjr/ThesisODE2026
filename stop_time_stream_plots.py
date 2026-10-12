@@ -17,8 +17,8 @@ from scipy.integrate import solve_ivp
 #   z(t;z0) = (x0 + t, y0)
 #
 # If y0 != 0, the trajectory never meets Gamma, so m(x0,y0)=+infinity.
-# If y0 = 0 and x0 < 1, the trajectory reaches Gamma at
-#   t = 1 - x0,
+# If y0 = 0 and x0 < 1, the trajectory approaches Gamma as
+#   t -> 1 - x0 from below,
 # so m(x0,0)=1-x0.
 # ============================================================
 
