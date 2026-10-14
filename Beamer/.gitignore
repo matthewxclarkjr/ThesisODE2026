@@ -1,0 +1,11 @@
+# LaTeX/Beamer generated files
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.synctex.gz
+*.toc
+*.fdb_latexmk
+*.fls
+*.vrb
