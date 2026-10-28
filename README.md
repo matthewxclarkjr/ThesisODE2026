@@ -2,7 +2,7 @@
 
 Python code and supporting computational files for the thesis:
 
-**Finite-Time Blow-Up and Stopping Times for Nonlinear ODEs**  
+**Finite-Time Blow-up and Stopping Times for Nonlinear Ordinary Differential Equations**  
 Matthew Clark Jr.  
 Department of Mathematics  
 Louisiana State University  
